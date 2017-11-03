@@ -33,6 +33,7 @@ def read_input(filename):
 
     # add boolean key
     reader.add_boolean_key('vfreq', default=False)          # vibrational frequencies
+    reader.add_boolean_key('fcidump', default=False)        # create FCIDUMP file
 
     # add scf block keys
     scf = reader.add_block_key('scf', required=True)

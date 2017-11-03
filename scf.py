@@ -103,6 +103,11 @@ def do_scf(inp):
     else:
         print ('ERROR: Unrecognized SCF method!')
 
+    # dump fcidump file if needed
+    if inp.fcidump:
+        from fcidump import fcidump
+        fcidump(mSCF)
+
     # save and return
     inp.mf = mSCF
     return inp
