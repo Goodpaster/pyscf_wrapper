@@ -4,7 +4,7 @@ from __future__ import print_function, division
 def do_scf(inp):
     '''Do the requested SCF.'''
 
-    from pyscf import gto, scf, dft, cc
+    from pyscf import gto, scf, dft, cc, fci
     from pyscf.cc import ccsd_t
 
     # sort out the method
@@ -60,7 +60,7 @@ def do_scf(inp):
             inp.timer.end('ccsd(t)')
 
     # UKS
-    elif method == 'uks' or method ==  'udft':
+    elif method in ('uks' or 'udft'):
         inp.timer.start('uks')
         inp.timer.start('grids')
         grids = dft.gen_grid.Grids(mol)
@@ -99,6 +99,24 @@ def do_scf(inp):
         mSCF.small_rho_cutoff = 1e-20
         mSCF.kernel()
         inp.timer.end('ks')
+
+    # FCI
+    elif method in ('fci'):
+        inp.timer.start('hf')
+        mSCF = scf.RHF(mol)
+        mSCF.conv_tol = inp.scf.conv
+        mSCF.conv_tol_grad = inp.scf.grad
+        mSCF.max_cycle = inp.scf.maxiter
+        mSCF.init_guess = inp.scf.guess
+        ehf = mSCF.kernel()
+        print ('HF Energy =     {0:20.15f}'.format(ehf))
+        inp.timer.end('hf')
+
+        inp.timer.start('fci')
+        mCI = fci.FCI(mSCF)
+        eci = mCI.kernel()[0]
+        print ('FCI Energy =    {0:20.15f}'.format(eci))
+        inp.timer.end('fci')
 
     else:
         print ('ERROR: Unrecognized SCF method!')
