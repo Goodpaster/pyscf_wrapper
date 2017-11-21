@@ -4,7 +4,7 @@ from __future__ import print_function, division
 def do_scf(inp):
     '''Do the requested SCF.'''
 
-    from pyscf import gto, scf, dft, cc, fci
+    from pyscf import gto, scf, dft, cc, fci, ci
     from pyscf.cc import ccsd_t
 
     # sort out the method
@@ -36,7 +36,7 @@ def do_scf(inp):
         mSCF.kernel()
         inp.timer.end('hf')
 
-    # CCSD
+    # CCSD and CCSD(T)
     elif method in ('ccsd', 'ccsd(t)'):
         inp.timer.start('hf')
         tSCF = scf.RHF(mol)
@@ -58,6 +58,23 @@ def do_scf(inp):
             e3 = ccsd_t.kernel(mSCF, eris)
             print ('Total CCSD(T) = {0:20.15f}'.format(ehf + eccsd + e3))
             inp.timer.end('ccsd(t)')
+
+    elif method in ('cisd'):
+        inp.timer.start('hf')
+        tSCF = scf.RHF(mol)
+        tSCF.conv_tol = inp.scf.conv
+        tSCF.conv_tol_grad = inp.scf.grad
+        tSCF.max_cycle = inp.scf.maxiter
+        tSCF.init_guess = inp.scf.guess
+        ehf = tSCF.kernel()
+        print ('HARTREE-FOCK = {0:20.15f}'.format(ehf))
+        inp.timer.end('hf')
+
+        inp.timer.start('cisd')
+        mSCF = ci.CISD(tSCF)
+        ecisd = mSCF.kernel()[0]
+        print ('Total CISD   = {0:20.15f}'.format(ehf + ecisd))
+        inp.timer.end('cisd')
 
     # UKS
     elif method in ('uks' or 'udft'):
