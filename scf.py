@@ -4,8 +4,10 @@ from __future__ import print_function, division
 def do_scf(inp):
     '''Do the requested SCF.'''
 
-    from pyscf import gto, scf, dft, cc, fci, ci
+    from pyscf import gto, scf, dft, cc, fci, ci, ao2mo
     from pyscf.cc import ccsd_t
+    import numpy as np
+    from fcidump import fcidump
 
     # sort out the method
     mol = inp.mol
@@ -117,6 +119,45 @@ def do_scf(inp):
         mSCF.kernel()
         inp.timer.end('ks')
 
+    # Unrestricted FCI
+    elif method in ('ufci'):
+        inp.timer.start('hf')
+        mSCF = scf.UHF(mol)
+        mSCF.conv_tol = inp.scf.conv
+        mSCF.conv_tol_grad = inp.scf.grad
+        mSCF.max_cycle = inp.scf.maxiter
+        mSCF.init_guess = inp.scf.guess
+        ehf = mSCF.kernel()
+        print ('HF Energy =     {0:20.15f}'.format(ehf))
+        inp.timer.end('hf')
+
+        inp.timer.start('fci')
+        cis = fci.direct_uhf.FCISolver(mol)
+        norb = mSCF.mo_energy[0].size
+        nea = (mol.nelectron+mol.spin) // 2
+        neb = (mol.nelectron-mol.spin) // 2
+        nelec = (nea, neb)
+        mo_a = mSCF.mo_coeff[0]
+        mo_b = mSCF.mo_coeff[1]
+        h1e_a = reduce(np.dot, (mo_a.T, mSCF.get_hcore(), mo_a))
+        h1e_b = reduce(np.dot, (mo_b.T, mSCF.get_hcore(), mo_b))
+        g2e_aa = ao2mo.incore.general(mSCF._eri, (mo_a,)*4, compact=False)
+        g2e_aa = g2e_aa.reshape(norb,norb,norb,norb)
+        g2e_ab = ao2mo.incore.general(mSCF._eri, (mo_a,mo_a,mo_b,mo_b), compact=False)
+        g2e_ab = g2e_ab.reshape(norb,norb,norb,norb)
+        g2e_bb = ao2mo.incore.general(mSCF._eri, (mo_b,)*4, compact=False)
+        g2e_bb = g2e_bb.reshape(norb,norb,norb,norb)
+        h1e = (h1e_a, h1e_b)
+        eri = (g2e_aa, g2e_ab, g2e_bb)
+
+        eci = fci.direct_uhf.kernel(h1e, eri, norb, nelec)[0]
+
+
+#        mCI = fci.FCI(mSCF)
+#        eci = mCI.kernel()[0]
+        print ('FCI Energy =    {0:20.15f}'.format(eci))
+        inp.timer.end('fci')
+
     # FCI
     elif method in ('fci'):
         inp.timer.start('hf')
@@ -140,8 +181,11 @@ def do_scf(inp):
 
     # dump fcidump file if needed
     if inp.fcidump:
-        from fcidump import fcidump
-        fcidump(mSCF)
+        if inp.filename[-4:].lower() == '.inp':
+            fcifile = inp.filename[:-4] + '.fcidump'
+        else:
+            fcifile = inp.filename + '.fcidump'
+        fcidump(mSCF, filename=fcifile)
 
     # save and return
     inp.mf = mSCF

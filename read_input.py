@@ -54,6 +54,7 @@ def read_input(filename):
 
     # read the input filename
     inp  = reader.read_input(filename)
+    inp.filename = filename
 
     # print input file to screen
     pstr("Input File")
