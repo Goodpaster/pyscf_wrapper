@@ -120,7 +120,7 @@ def do_scf(inp):
         inp.timer.end('ks')
 
     # Unrestricted FCI
-    elif method in ('ufci'):
+    elif method == 'ufci':
         inp.timer.start('hf')
         mSCF = scf.UHF(mol)
         mSCF.conv_tol = inp.scf.conv
@@ -152,9 +152,6 @@ def do_scf(inp):
 
         eci = fci.direct_uhf.kernel(h1e, eri, norb, nelec)[0]
 
-
-#        mCI = fci.FCI(mSCF)
-#        eci = mCI.kernel()[0]
         print ('FCI Energy =    {0:20.15f}'.format(eci))
         inp.timer.end('fci')
 
