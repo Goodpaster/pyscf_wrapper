@@ -44,6 +44,8 @@ def read_input(filename):
     scf.add_line_key('maxiter', type=int, default=50)        # max iterations
     scf.add_line_key('guess', type=('minao', 'atom', '1e'), default='atom') # intial density guess
     scf.add_line_key('grid', type=(1,2,3,4,5,6,7,8,9), default=2) # dft numint grid
+    scf.add_line_key('freeze', type=int, default=None)      # frozen core orbitals
+    scf.add_line_key('cas', type=[int, int], default=None)  # CAS space for CASCI or CASSCF
 
     # add geomopt block key
     geomopt = reader.add_block_key('geomopt', required=False)
@@ -92,7 +94,7 @@ def read_input(filename):
     if inp.charge is not None: mol.charge = inp.charge
     if inp.spin is not None: mol.spin = inp.spin
     mol.verbose = inp.verbose
-    mol.build()
+    mol.build(dump_input=False)
     inp.mol = mol
 
     # return inp object

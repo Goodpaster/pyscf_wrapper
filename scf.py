@@ -4,7 +4,7 @@ from __future__ import print_function, division
 def do_scf(inp):
     '''Do the requested SCF.'''
 
-    from pyscf import gto, scf, dft, cc, fci, ci, ao2mo
+    from pyscf import gto, scf, dft, cc, fci, ci, ao2mo, mcscf
     from pyscf.cc import ccsd_t
     import numpy as np
     from fcidump import fcidump
@@ -27,7 +27,7 @@ def do_scf(inp):
     # RHF
     elif method in ('rhf', 'hf'):
         inp.timer.start('hf')
-        if mol.nelectron%2 == 0:
+        if mol.spin == 0:
             mSCF = scf.RHF(mol)
         else:
             mSCF = scf.ROHF(mol)
@@ -158,7 +158,10 @@ def do_scf(inp):
     # FCI
     elif method in ('fci'):
         inp.timer.start('hf')
-        mSCF = scf.RHF(mol)
+        if mol.spin == 0:
+            mSCF = scf.RHF(mol)
+        else:
+            mSCF = scf.ROHF(mol)
         mSCF.conv_tol = inp.scf.conv
         mSCF.conv_tol_grad = inp.scf.grad
         mSCF.max_cycle = inp.scf.maxiter
@@ -169,9 +172,66 @@ def do_scf(inp):
 
         inp.timer.start('fci')
         mCI = fci.FCI(mSCF)
-        eci = mCI.kernel()[0]
+        mCI.kernel()[0]
+        eci = mCI.eci
         print ('FCI Energy =    {0:20.15f}'.format(eci))
         inp.timer.end('fci')
+
+    # CASCI
+    elif method == 'casci':
+        if inp.scf.cas is None:
+            print ('ERROR: Must specify CAS space')
+            return inp
+        inp.timer.start('hf')
+        if mol.spin == 0:
+            mSCF = scf.RHF(mol)
+        else:
+            mSCF = scf.ROHF(mol)
+        mSCF.conv_tol = inp.scf.conv
+        mSCF.conv_tol_grad = inp.scf.grad
+        mSCF.max_cycle = inp.scf.maxiter
+        mSCF.init_guess = inp.scf.guess
+        ehf = mSCF.kernel()
+        print ('HF Energy =     {0:20.15f}'.format(ehf))
+        inp.timer.end('hf')
+
+        inp.timer.start('casci')
+        if mol.spin == 0:
+            nelecas = inp.scf.cas[0]
+        else:
+            nelecas = (inp.scf.cas[0]//2, inp.scf.cas[0]//2)
+        mCI = mcscf.CASCI(mSCF, inp.scf.cas[1], nelecas)
+        eci = mCI.kernel()[0]
+        print ('CASCI Energy =    {0:20.15f}'.format(eci))
+        inp.timer.end('casci')
+
+    # CASSCF
+    elif method == 'casscf':
+        if inp.scf.cas is None:
+            print ('ERROR: Must specify CAS space')
+            return inp
+        inp.timer.start('hf')
+        if mol.spin == 0:
+            mSCF = scf.RHF(mol)
+        else:
+            mSCF = scf.ROHF(mol)
+        mSCF.conv_tol = inp.scf.conv
+        mSCF.conv_tol_grad = inp.scf.grad
+        mSCF.max_cycle = inp.scf.maxiter
+        mSCF.init_guess = inp.scf.guess
+        ehf = mSCF.kernel()
+        print ('HF Energy =     {0:20.15f}'.format(ehf))
+        inp.timer.end('hf')
+
+        inp.timer.start('casci')
+        if mol.spin == 0:
+            nelecas = inp.scf.cas[0]
+        else:
+            nelecas = (inp.scf.cas[0]//2, inp.scf.cas[0]//2)
+        mCI = mcscf.CASSCF(mSCF, inp.scf.cas[1], nelecas)
+        eci = mCI.kernel()[0]
+        print ('CASCI Energy =    {0:20.15f}'.format(eci))
+        inp.timer.end('casci')
 
     else:
         print ('ERROR: Unrecognized SCF method!')
