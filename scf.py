@@ -48,8 +48,11 @@ def do_scf(inp):
         tSCF.init_guess = inp.scf.guess
         ehf = tSCF.kernel()
         inp.timer.end('hf')
+
         inp.timer.start('ccsd')
-        mSCF = cc.RCCSD(tSCF)
+        frozen = 0
+        if inp.scf.freeze is not None: frozen = inp.scf.freeze
+        mSCF = cc.RCCSD(tSCF, frozen=frozen)
         mSCF.max_cycle = inp.scf.maxiter
         eccsd, t1, t2 = mSCF.kernel()
         inp.timer.end('ccsd')
@@ -73,7 +76,9 @@ def do_scf(inp):
         inp.timer.end('hf')
 
         inp.timer.start('cisd')
-        mSCF = ci.CISD(tSCF)
+        frozen = 0
+        if inp.scf.freeze is not None: frozen = inp.scf.freeze
+        mSCF = ci.CISD(tSCF, frozen=frozen)
         ecisd = mSCF.kernel()[0]
         print ('Total CISD   = {0:20.15f}'.format(ehf + ecisd))
         inp.timer.end('cisd')
@@ -171,9 +176,19 @@ def do_scf(inp):
         inp.timer.end('hf')
 
         inp.timer.start('fci')
-        mCI = fci.FCI(mSCF)
-        mCI.kernel()[0]
-        eci = mCI.eci
+        if inp.scf.freeze is None:
+            mCI = fci.FCI(mSCF)
+            mCI.kernel()[0]
+            eci = mCI.eci
+        else:
+            nel  = mol.nelectron - inp.scf.freeze * 2
+            ncas = mol.nao_nr() - inp.scf.freeze
+            if mol.spin == 0:
+                nelecas = nel
+            else:
+                nelecas = (nel//2 + nel%2, nel//2)
+            mCI = mcscf.CASCI(mSCF, ncas, nelecas)
+            eci = mCI.kernel()[0] 
         print ('FCI Energy =    {0:20.15f}'.format(eci))
         inp.timer.end('fci')
 
@@ -199,7 +214,8 @@ def do_scf(inp):
         if mol.spin == 0:
             nelecas = inp.scf.cas[0]
         else:
-            nelecas = (inp.scf.cas[0]//2, inp.scf.cas[0]//2)
+            nelecas = (inp.scf.cas[0]//2 + inp.scf.cas[0]%2,
+                       inp.scf.cas[0]//2)
         mCI = mcscf.CASCI(mSCF, inp.scf.cas[1], nelecas)
         eci = mCI.kernel()[0]
         print ('CASCI Energy =    {0:20.15f}'.format(eci))
@@ -227,7 +243,8 @@ def do_scf(inp):
         if mol.spin == 0:
             nelecas = inp.scf.cas[0]
         else:
-            nelecas = (inp.scf.cas[0]//2, inp.scf.cas[0]//2)
+            nelecas = (inp.scf.cas[0]//2 + inp.scf.cas[0]%2,
+                       inp.scf.cas[0]//2)
         mCI = mcscf.CASSCF(mSCF, inp.scf.cas[1], nelecas)
         eci = mCI.kernel()[0]
         print ('CASCI Energy =    {0:20.15f}'.format(eci))
