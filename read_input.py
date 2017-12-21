@@ -29,6 +29,7 @@ def read_input(filename):
     reader.add_line_key('basis', default='sto-3g')              # basis
     reader.add_line_key('charge', type=int)                     # molecular charge
     reader.add_line_key('spin', type=int)                       # molecular spin
+    reader.add_line_key('symmetry', type=int, default=None)     # mol symmetry (False, 0, 1)
     reader.add_line_key('verbose', type=(0,1,2,3,4,5,6,7,8,9), default=4) # verbose level
 
     # add boolean key
@@ -94,6 +95,7 @@ def read_input(filename):
     if inp.charge is not None: mol.charge = inp.charge
     if inp.spin is not None: mol.spin = inp.spin
     mol.verbose = inp.verbose
+    if inp.symmetry is not None: mol.symmetry = inp.symmetry
     mol.build(dump_input=False)
     inp.mol = mol
 
