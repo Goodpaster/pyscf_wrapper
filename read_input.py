@@ -22,6 +22,7 @@ def read_input(filename):
     atoms = reader.add_block_key('atoms', required=True)
     atoms.add_regex_line('atom',
         '\s*([A-Za-z.]+)\s+(\-?\d+\.?\d*)\s+(\-?\d+.?\d*)\s+(\-?\d+.?\d*)', repeat=True)
+    atoms.add_line_key('read', type=str, default=None)          # read geom from xyz file
 
     # add simple line keys
     reader.add_line_key('memory', type=(int, float))            # max memory in MB
@@ -68,16 +69,32 @@ def read_input(filename):
     # initialze pySCF molecule object
     mol = gto.Mole()
 
-    # collect atoms in pyscf format
+    # read atoms and transform to pyscf format
     mol.atom = []
     ghbasis = []
-    for r in inp.atoms.atom:
-        if 'ghost.' in r.group(1).lower() or 'gh.' in r.group(1).lower():
-            ghbasis.append(r.group(1).split('.')[1])
-            rgrp1 = 'ghost:{0}'.format(len(ghbasis))
-            mol.atom.append([rgrp1, (float(r.group(2)), float(r.group(3)), float(r.group(4)))])
-        else:
-            mol.atom.append([r.group(1), (float(r.group(2)), float(r.group(3)), float(r.group(4)))])
+    assert (inp.atoms.atom is not None or inp.atoms.read is not None)
+
+    # collect from regular input
+    if inp.atoms.atom is not None:
+        for r in inp.atoms.atom:
+            if 'ghost.' in r.group(1).lower() or 'gh.' in r.group(1).lower():
+                ghbasis.append(r.group(1).split('.')[1])
+                rgrp1 = 'ghost:{0}'.format(len(ghbasis))
+                mol.atom.append([rgrp1, (float(r.group(2)), float(r.group(3)), float(r.group(4)))])
+            else:
+                mol.atom.append([r.group(1), (float(r.group(2)), float(r.group(3)), float(r.group(4)))])
+
+    # collect from xyz file
+    if inp.atoms.read is not None:
+        xyzlines = open(inp.atoms.read, 'r').readlines()
+        for i in range(2,len(xyzlines)):
+            line = xyzlines[i].split()
+            if 'ghost.' in line[0].lower() or 'gh.' in line[0].lower():
+                ghbasis.append(line[0].split('.')[1])
+                rgrp1 = 'ghost:{0}'.format(len(ghbasis))
+                mol.atom.append([rgrp1, (float(line[1]), float(line[2]), float(line[3]))])
+            else:
+                mol.atom.append([line[0], (float(line[1]), float(line[2]), float(line[3]))])
 
     # build dict of basis for each atom
     mol.basis = {}
