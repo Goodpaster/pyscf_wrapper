@@ -96,7 +96,7 @@ def read_input(filename):
     if inp.spin is not None: mol.spin = inp.spin
     mol.verbose = inp.verbose
     if inp.symmetry is not None: mol.symmetry = inp.symmetry
-    mol.build(dump_input=False)
+    mol.build()#dump_input=False)
     inp.mol = mol
 
     # return inp object

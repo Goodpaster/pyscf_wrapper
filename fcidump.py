@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-def fcidump(mf, filename='FCIDUMP'):
+def fcidump(mf, filename='FCIDUMP', tol=1e-8, float_format='%18.12f'):
     from pyscf.tools.fcidump import from_integrals
     from pyscf import ao2mo
     from numpy import dot
@@ -13,15 +13,15 @@ def fcidump(mf, filename='FCIDUMP'):
     ms = 0
     orbsym = None
 
-    fout = open(filename, 'w')
+    fout = open(filename, 'w', 0)
 
     write_head(fout, nmo, nelec, ms, orbsym)
 
-    write_eri(fout, eri, nmo, tol=1e-8)
+    write_eri(fout, eri, nmo, tol=tol, float_format=float_format)
 
-    write_hcore(fout, h1e, nmo, tol=1e-8)
+    write_hcore(fout, h1e, nmo, tol=tol, float_format=float_format)
 
-    output_format = '%15.12f    0    0    0    0'
+    output_format = float_format + '    0    0    0    0'
     fout.write(output_format % mf.energy_nuc())
     fout.close()
 

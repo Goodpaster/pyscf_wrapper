@@ -259,7 +259,7 @@ def do_scf(inp):
             fcifile = inp.filename[:-4] + '.fcidump'
         else:
             fcifile = inp.filename + '.fcidump'
-        fcidump(mSCF, filename=fcifile)
+        fcidump(mSCF, filename=fcifile, tol=1e-6)
 
     # save and return
     inp.mf = mSCF
