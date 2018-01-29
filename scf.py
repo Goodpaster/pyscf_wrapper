@@ -15,42 +15,18 @@ def do_scf(inp):
 
     # UHF
     if method == 'uhf':
-        inp.timer.start('uhf')
-        mSCF = scf.UHF(mol)
-        mSCF.conv_tol = inp.scf.conv
-        mSCF.conv_tol_grad = inp.scf.grad
-        mSCF.max_cycle = inp.scf.maxiter
-        mSCF.init_guess = inp.scf.guess
-        mSCF.diis_space = inp.scf.diis
-        mSCF.kernel()
-        inp.timer.end('uhf')
+        ehf, mSCF = do_hf(inp, unrestricted=True)
+        print_energy('UHF', ehf)
 
     # RHF
     elif method in ('rhf', 'hf'):
-        inp.timer.start('hf')
-        if mol.spin == 0:
-            mSCF = scf.RHF(mol)
-        else:
-            mSCF = scf.ROHF(mol)
-        mSCF.level_shift = inp.scf.shift
-        mSCF.conv_tol = inp.scf.conv
-        mSCF.conv_tol_grad = inp.scf.grad
-        mSCF.max_cycle = inp.scf.maxiter
-        mSCF.init_guess = inp.scf.guess
-        mSCF.diis_space = inp.scf.diis
-        mSCF.kernel()
-        inp.timer.end('hf')
+        ehf, mSCF = do_hf(inp)
+        print_energy('RHF', ehf)
 
     # CCSD and CCSD(T)
     elif method in ('ccsd', 'ccsd(t)'):
-        inp.timer.start('hf')
-        tSCF = scf.RHF(mol)
-        tSCF.conv_tol = inp.scf.conv
-        tSCF.conv_tol_grad = inp.scf.grad
-        tSCF.max_cycle = inp.scf.maxiter
-        tSCF.init_guess = inp.scf.guess
-        ehf = tSCF.kernel()
-        inp.timer.end('hf')
+        ehf, tSCF = do_hf(inp)
+        print_energy('RHF', ehf)
 
         inp.timer.start('ccsd')
         frozen = 0
@@ -58,32 +34,26 @@ def do_scf(inp):
         mSCF = cc.RCCSD(tSCF, frozen=frozen)
         mSCF.max_cycle = inp.scf.maxiter
         eccsd, t1, t2 = mSCF.kernel()
+        print_energy('CCSD', ehf + eccsd)
         inp.timer.end('ccsd')
 
         if method in ('ccsd(t)'):
             inp.timer.start('ccsd(t)')
             eris = mSCF.ao2mo()
             e3 = ccsd_t.kernel(mSCF, eris)
-            print ('Total CCSD(T) = {0:20.15f}'.format(ehf + eccsd + e3))
+            print_energy('CCSD(T)', ehf + eccsd + e3)
             inp.timer.end('ccsd(t)')
 
     elif method in ('cisd'):
-        inp.timer.start('hf')
-        tSCF = scf.RHF(mol)
-        tSCF.conv_tol = inp.scf.conv
-        tSCF.conv_tol_grad = inp.scf.grad
-        tSCF.max_cycle = inp.scf.maxiter
-        tSCF.init_guess = inp.scf.guess
-        ehf = tSCF.kernel()
-        print ('HARTREE-FOCK = {0:20.15f}'.format(ehf))
-        inp.timer.end('hf')
+        ehf, tSCF = do_hf(inp)
+        print_energy('RHF', ehf)
 
         inp.timer.start('cisd')
         frozen = 0
         if inp.scf.freeze is not None: frozen = inp.scf.freeze
         mSCF = ci.CISD(tSCF, frozen=frozen)
         ecisd = mSCF.kernel()[0]
-        print ('Total CISD   = {0:20.15f}'.format(ehf + ecisd))
+        print_energy('CISD', ehf + ecisd)
         inp.timer.end('cisd')
 
     # UKS
@@ -102,7 +72,8 @@ def do_scf(inp):
         mSCF.max_cycle = inp.scf.maxiter
         mSCF.init_guess = inp.scf.guess
         mSCF.small_rho_cutoff = 1e-20
-        mSCF.kernel()
+        eks = mSCF.kernel()
+        print_energy('UKS', eks)
         inp.timer.end('uks')
 
     # RKS
@@ -124,20 +95,14 @@ def do_scf(inp):
         mSCF.max_cycle = inp.scf.maxiter
         mSCF.init_guess = inp.scf.guess
         mSCF.small_rho_cutoff = 1e-20
-        mSCF.kernel()
+        eks = mSCF.kernel()
+        print_energy('RKS', eks)
         inp.timer.end('ks')
 
     # Unrestricted FCI
     elif method == 'ufci':
-        inp.timer.start('hf')
-        mSCF = scf.UHF(mol)
-        mSCF.conv_tol = inp.scf.conv
-        mSCF.conv_tol_grad = inp.scf.grad
-        mSCF.max_cycle = inp.scf.maxiter
-        mSCF.init_guess = inp.scf.guess
-        ehf = mSCF.kernel()
-        print ('HF Energy =     {0:20.15f}'.format(ehf))
-        inp.timer.end('hf')
+        ehf, mSCF = do_hf(inp, unrestricted=True)
+        print_energy('UHF', ehf)
 
         inp.timer.start('fci')
         cis = fci.direct_uhf.FCISolver(mol)
@@ -159,24 +124,13 @@ def do_scf(inp):
         eri = (g2e_aa, g2e_ab, g2e_bb)
 
         eci = fci.direct_uhf.kernel(h1e, eri, norb, nelec)[0]
-
-        print ('FCI Energy =    {0:20.15f}'.format(eci))
+        print_energy('FCI', eci)
         inp.timer.end('fci')
 
     # FCI
     elif method in ('fci'):
-        inp.timer.start('hf')
-        if mol.spin == 0:
-            mSCF = scf.RHF(mol)
-        else:
-            mSCF = scf.ROHF(mol)
-        mSCF.conv_tol = inp.scf.conv
-        mSCF.conv_tol_grad = inp.scf.grad
-        mSCF.max_cycle = inp.scf.maxiter
-        mSCF.init_guess = inp.scf.guess
-        ehf = mSCF.kernel()
-        print ('HF Energy =     {0:20.15f}'.format(ehf))
-        inp.timer.end('hf')
+        ehf, mSCF = do_hf(inp)
+        print_energy('RHF', ehf)
 
         inp.timer.start('fci')
         if inp.scf.freeze is None:
@@ -192,8 +146,8 @@ def do_scf(inp):
                 nelecas = (nel//2 + nel%2, nel//2)
             mCI = mcscf.CASCI(mSCF, ncas, nelecas)
             mCI.fcisolver = fci.direct_spin0
-            eci = mCI.kernel()[0] 
-        print ('FCI Energy =    {0:20.15f}'.format(eci))
+            eci = mCI.kernel()[0]
+        print_energy('FCI', eci)
         inp.timer.end('fci')
 
     # CASCI
@@ -201,18 +155,8 @@ def do_scf(inp):
         if inp.scf.cas is None:
             print ('ERROR: Must specify CAS space')
             return inp
-        inp.timer.start('hf')
-        if mol.spin == 0:
-            mSCF = scf.RHF(mol)
-        else:
-            mSCF = scf.ROHF(mol)
-        mSCF.conv_tol = inp.scf.conv
-        mSCF.conv_tol_grad = inp.scf.grad
-        mSCF.max_cycle = inp.scf.maxiter
-        mSCF.init_guess = inp.scf.guess
-        ehf = mSCF.kernel()
-        print ('HF Energy =     {0:20.15f}'.format(ehf))
-        inp.timer.end('hf')
+        ehf, mSCF = do_hf(inp)
+        print_energy('RHF', ehf)
 
         inp.timer.start('casci')
         if mol.spin == 0:
@@ -222,7 +166,7 @@ def do_scf(inp):
                        inp.scf.cas[0]//2)
         mCI = mcscf.CASCI(mSCF, inp.scf.cas[1], nelecas)
         eci = mCI.kernel()[0]
-        print ('CASCI Energy =    {0:20.15f}'.format(eci))
+        print_energy('CASCI', eci)
         inp.timer.end('casci')
 
     # CASSCF
@@ -230,22 +174,10 @@ def do_scf(inp):
         if inp.scf.cas is None:
             print ('ERROR: Must specify CAS space')
             return inp
-        inp.timer.start('hf')
-        if method == 'ucasscf':
-            mSCF = scf.UHF(mol)
-        else:
-            if mol.spin == 0:
-                mSCF = scf.RHF(mol)
-            else:
-                mSCF = scf.ROHF(mol)
-        mSCF.conv_tol = inp.scf.conv
-        mSCF.conv_tol_grad = inp.scf.grad
-        mSCF.max_cycle = inp.scf.maxiter
-        mSCF.init_guess = inp.scf.guess
-        mSCF.diis_space = inp.scf.diis
-        ehf = mSCF.kernel()
-        print ('HF Energy =     {0:20.15f}'.format(ehf))
-        inp.timer.end('hf')
+
+        lunrestricted = (method == 'ucasscf')
+        ehf, mSCF = do_hf(inp, unrestricted=lunrestricted)
+        print_energy('HF', ehf)
 
         inp.timer.start('casci')
         if mol.spin == 0:
@@ -255,7 +187,7 @@ def do_scf(inp):
                        inp.scf.cas[0]//2)
         mCI = mcscf.CASSCF(mSCF, inp.scf.cas[1], nelecas)
         eci = mCI.kernel()[0]
-        print ('CASSCF Energy =    {0:20.15f}'.format(eci))
+        print_energy('CASSCF', eci)
         inp.timer.end('casci')
 
     elif method == 'nevpt2' or method == 'unevpt2':
@@ -263,22 +195,8 @@ def do_scf(inp):
             print ('ERROR: Must specify CAS space')
             return inp
 
-        inp.timer.start('hf')
-        if method == 'unevpt2':
-            mSCF = scf.UHF(mol)
-        else:
-            if mol.spin == 0:
-                mSCF = scf.RHF(mol)
-            else:
-                mSCF = scf.ROHF(mol)
-        mSCF.conv_tol = inp.scf.conv
-        mSCF.conv_tol_grad = inp.scf.grad
-        mSCF.max_cycle = inp.scf.maxiter
-        mSCF.init_guess = inp.scf.guess
-        mSCF.diis_space = inp.scf.diis
-        ehf = mSCF.kernel()
-        print ('HF Energy =     {0:20.15f}'.format(ehf))
-        inp.timer.end('hf')
+        ehf, mSCF = do_hf(inp)
+        print_energy('RHF', ehf)
 
         inp.timer.start('casci')
         if mol.spin == 0:
@@ -288,12 +206,12 @@ def do_scf(inp):
                        inp.scf.cas[0]//2)
         mCI = mcscf.CASCI(mSCF, inp.scf.cas[1], nelecas)
         eci = mCI.kernel()[0]
-        print ('CASCI Energy =    {0:20.15f}'.format(eci))
+        print_energy('CASCI', eci)
         inp.timer.end('casci')
 
         inp.timer.start('nevpt2')
         ept2 = mrpt.NEVPT2(mCI) + eci
-        print ('NEVPT2 Energy =   {0:20.15f}'.format(ept2))
+        print_energy('NEVPT2', ept2)
         inp.timer.end('nevpt2')
 
     else:
@@ -316,3 +234,52 @@ def do_scf(inp):
     inp.mf = mSCF
     return inp
 
+
+def do_hf(inp, unrestricted=False):
+    '''Do a RHF, ROHF, or UHF calculation.'''
+
+    from pyscf import scf
+
+    mol = inp.mol
+    timer = 'rhf'
+    if unrestricted:
+        timer = 'uhf'
+    elif mol.spin > 0:
+        timer = 'rohf'
+
+    inp.timer.start(timer)
+
+    # create SCF object
+    if unrestricted:
+        mSCF = scf.UHF(mol)
+    elif mol.spin > 0:
+        mSCF = scf.ROHF(mol)
+    else:
+        mSCF = scf.RHF(mol)
+
+    # set values from input
+    mSCF.level_shift = inp.scf.shift
+    mSCF.conv_tol = inp.scf.conv
+    mSCF.conv_tol_grad = inp.scf.grad
+    mSCF.max_cycle = inp.scf.maxiter
+    mSCF.init_guess = inp.scf.guess
+    mSCF.diis_space = inp.scf.diis
+
+    # do SCF
+    ehf = mSCF.kernel()
+
+    inp.timer.end(timer)
+
+    # return energy and SCF object
+    return ehf, mSCF
+
+
+def print_energy(string, e):
+    '''Prints energy in some standard format.'''
+    string = string.rstrip() + ' Energy'
+    string = '{0:30s} = {1:25.15f}'.format(string, e)
+    ld = 80 - len(string) - 2
+    lb = ld // 2
+    le = ld // 2 + ld % 2
+    string = ('!'*lb) + ' ' + string + ' ' + ('!'*le)
+    print (string)
