@@ -21,6 +21,7 @@ def do_scf(inp):
         mSCF.conv_tol_grad = inp.scf.grad
         mSCF.max_cycle = inp.scf.maxiter
         mSCF.init_guess = inp.scf.guess
+        mSCF.diis_space = inp.scf.diis
         mSCF.kernel()
         inp.timer.end('uhf')
 
@@ -31,10 +32,12 @@ def do_scf(inp):
             mSCF = scf.RHF(mol)
         else:
             mSCF = scf.ROHF(mol)
+        mSCF.level_shift = inp.scf.shift
         mSCF.conv_tol = inp.scf.conv
         mSCF.conv_tol_grad = inp.scf.grad
         mSCF.max_cycle = inp.scf.maxiter
         mSCF.init_guess = inp.scf.guess
+        mSCF.diis_space = inp.scf.diis
         mSCF.kernel()
         inp.timer.end('hf')
 
@@ -188,6 +191,7 @@ def do_scf(inp):
             else:
                 nelecas = (nel//2 + nel%2, nel//2)
             mCI = mcscf.CASCI(mSCF, ncas, nelecas)
+            mCI.fcisolver = fci.direct_spin0
             eci = mCI.kernel()[0] 
         print ('FCI Energy =    {0:20.15f}'.format(eci))
         inp.timer.end('fci')
@@ -222,19 +226,23 @@ def do_scf(inp):
         inp.timer.end('casci')
 
     # CASSCF
-    elif method == 'casscf':
+    elif method == 'casscf' or method == 'ucasscf':
         if inp.scf.cas is None:
             print ('ERROR: Must specify CAS space')
             return inp
         inp.timer.start('hf')
-        if mol.spin == 0:
-            mSCF = scf.RHF(mol)
+        if method == 'ucasscf':
+            mSCF = scf.UHF(mol)
         else:
-            mSCF = scf.ROHF(mol)
+            if mol.spin == 0:
+                mSCF = scf.RHF(mol)
+            else:
+                mSCF = scf.ROHF(mol)
         mSCF.conv_tol = inp.scf.conv
         mSCF.conv_tol_grad = inp.scf.grad
         mSCF.max_cycle = inp.scf.maxiter
         mSCF.init_guess = inp.scf.guess
+        mSCF.diis_space = inp.scf.diis
         ehf = mSCF.kernel()
         print ('HF Energy =     {0:20.15f}'.format(ehf))
         inp.timer.end('hf')
@@ -260,6 +268,11 @@ def do_scf(inp):
         else:
             fcifile = inp.filename + '.fcidump'
         fcidump(mSCF, filename=fcifile, tol=1e-6)
+
+    # plot MOs if needed
+    if inp.mo2cube:
+        from mo_2_cube import save_MOs
+        save_MOs(inp, mSCF, mSCF.mo_coeff)
 
     # save and return
     inp.mf = mSCF

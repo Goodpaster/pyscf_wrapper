@@ -22,30 +22,33 @@ def read_input(filename):
     atoms = reader.add_block_key('atoms', required=True)
     atoms.add_regex_line('atom',
         '\s*([A-Za-z.]+)\s+(\-?\d+\.?\d*)\s+(\-?\d+.?\d*)\s+(\-?\d+.?\d*)', repeat=True)
-    atoms.add_line_key('read', type=str, default=None)          # read geom from xyz file
+    atoms.add_line_key('read', type=str, default=None)      # read geom from xyz file
 
     # add simple line keys
-    reader.add_line_key('memory', type=(int, float))            # max memory in MB
-    reader.add_line_key('unit', default='angstrom')             # coord unit
-    reader.add_line_key('basis', default='sto-3g')              # basis
-    reader.add_line_key('charge', type=int)                     # molecular charge
-    reader.add_line_key('spin', type=int)                       # molecular spin
-    reader.add_line_key('symmetry', type=int, default=None)     # mol symmetry (False, 0, 1)
+    reader.add_line_key('memory', type=(int, float))        # max memory in MB
+    reader.add_line_key('unit', default='angstrom')         # coord unit
+    reader.add_line_key('basis', default='sto-3g')          # basis
+    reader.add_line_key('charge', type=int)                 # molecular charge
+    reader.add_line_key('spin', type=int)                   # molecular spin
+    reader.add_line_key('symmetry', type=int, default=None) # mol symmetry (False, 0, 1)
     reader.add_line_key('verbose', type=(0,1,2,3,4,5,6,7,8,9), default=4) # verbose level
 
     # add boolean key
     reader.add_boolean_key('vfreq', default=False)          # vibrational frequencies
     reader.add_boolean_key('fcidump', default=False)        # create FCIDUMP file
+    reader.add_boolean_key('mo2cube', default=False)        # Cube files for each MO
 
     # add scf block keys
     scf = reader.add_block_key('scf', required=True)
-    scf.add_line_key('method', default='hf')                 # SCF method
-    scf.add_line_key('xc', default='lda,vwn')                # XC functional
-    scf.add_line_key('conv', type=float, default=1e-8)       # conv_tol
-    scf.add_line_key('grad', type=float, default=1e-6)       # conv_tol_grad
-    scf.add_line_key('maxiter', type=int, default=50)        # max iterations
+    scf.add_line_key('method', default='hf')                # SCF method
+    scf.add_line_key('xc', default='lda,vwn')               # XC functional
+    scf.add_line_key('conv', type=float, default=1e-8)      # conv_tol
+    scf.add_line_key('grad', type=float, default=1e-6)      # conv_tol_grad
+    scf.add_line_key('maxiter', type=int, default=50)       # max iterations
     scf.add_line_key('guess', type=('minao', 'atom', '1e'), default='atom') # intial density guess
     scf.add_line_key('grid', type=(1,2,3,4,5,6,7,8,9), default=2) # dft numint grid
+    scf.add_line_key('shift', type=float, default=0)        # level shift
+    scf.add_line_key('diis', type=int, default=8)           # diis space
     scf.add_line_key('freeze', type=int, default=None)      # frozen core orbitals
     scf.add_line_key('cas', type=[int, int], default=None)  # CAS space for CASCI or CASSCF
 
