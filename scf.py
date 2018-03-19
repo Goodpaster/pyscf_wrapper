@@ -4,7 +4,7 @@ from __future__ import print_function, division
 def do_scf(inp):
     '''Do the requested SCF.'''
 
-    from pyscf import gto, scf, dft, cc, fci, ci, ao2mo, mcscf, mrpt
+    from pyscf import gto, scf, dft, cc, fci, ci, ao2mo, mcscf, mrpt, lib
     from pyscf.cc import ccsd_t
     import numpy as np
     from fcidump import fcidump
@@ -145,7 +145,6 @@ def do_scf(inp):
             else:
                 nelecas = (nel//2 + nel%2, nel//2)
             mCI = mcscf.CASCI(mSCF, ncas, nelecas)
-            mCI.fcisolver = fci.direct_spin0
             eci = mCI.kernel()[0]
         print_energy('FCI', eci)
         inp.timer.end('fci')
