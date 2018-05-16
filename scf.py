@@ -135,6 +135,8 @@ def do_scf(inp):
         inp.timer.start('fci')
         if inp.scf.freeze is None:
             mCI = fci.FCI(mSCF)
+            if inp.scf.roots is not None:
+                mCI.nroots = inp.scf.roots
             mCI.kernel()[0]
             eci = mCI.eci
         else:
@@ -142,11 +144,19 @@ def do_scf(inp):
             ncas = mol.nao_nr() - inp.scf.freeze
             if mol.spin == 0:
                 nelecas = nel
+                mCI = mcscf.CASCI(mSCF, ncas, nelecas)
+                mCI.fcisolver = fci.solver(mol)
             else:
-                nelecas = (nel//2 + nel%2, nel//2)
-            mCI = mcscf.CASCI(mSCF, ncas, nelecas)
+                nelecas = (nel//2+mol.spin//2, nel//2-mol.spin//2)
+                mCI = mcscf.CASCI(mSCF, ncas, nelecas)
+                mCI.fcisolver = fci.direct_spin1.FCISolver(mol)
             eci = mCI.kernel()[0]
-        print_energy('FCI', eci)
+
+        if inp.scf.roots is None:
+            print_energy('FCI', eci)
+        else:
+            for i in range(inp.scf.roots):
+                print_energy('FCI {0}'.format(i), eci[i])
         inp.timer.end('fci')
 
     # CASCI
@@ -197,16 +207,16 @@ def do_scf(inp):
         ehf, mSCF = do_hf(inp)
         print_energy('RHF', ehf)
 
-        inp.timer.start('casci')
+        inp.timer.start('casscf')
         if mol.spin == 0:
             nelecas = inp.scf.cas[0]
         else:
-            nelecas = (inp.scf.cas[0]//2 + inp.scf.cas[0]%2,
-                       inp.scf.cas[0]//2)
-        mCI = mcscf.CASCI(mSCF, inp.scf.cas[1], nelecas)
+            nelecas = (inp.scf.cas[0]//2 + mol.spin//2,
+                       inp.scf.cas[0]//2 - mol.spin//2)
+        mCI = mcscf.CASSCF(mSCF, inp.scf.cas[1], nelecas)
         eci = mCI.kernel()[0]
-        print_energy('CASCI', eci)
-        inp.timer.end('casci')
+        print_energy('CASSCF', eci)
+        inp.timer.end('casscf')
 
         inp.timer.start('nevpt2')
         ept2 = mrpt.NEVPT2(mCI) + eci
@@ -215,6 +225,7 @@ def do_scf(inp):
 
     else:
         print ('ERROR: Unrecognized SCF method!')
+        raise SystemExit
 
     # dump fcidump file if needed
     if inp.fcidump:

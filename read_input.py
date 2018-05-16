@@ -51,6 +51,7 @@ def read_input(filename):
     scf.add_line_key('diis', type=int, default=8)           # diis space
     scf.add_line_key('freeze', type=int, default=None)      # frozen core orbitals
     scf.add_line_key('cas', type=[int, int], default=None)  # CAS space for CASCI or CASSCF
+    scf.add_line_key('roots', type=int, default=None)       # number of states (FCI)
 
     # add geomopt block key
     geomopt = reader.add_block_key('geomopt', required=False)
