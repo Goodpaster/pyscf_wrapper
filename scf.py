@@ -139,6 +139,7 @@ def do_scf(inp):
                 mCI.nroots = inp.scf.roots
             mCI.kernel()[0]
             eci = mCI.eci
+
         else:
             nel  = mol.nelectron - inp.scf.freeze * 2
             ncas = mol.nao_nr() - inp.scf.freeze
@@ -151,6 +152,8 @@ def do_scf(inp):
                 mCI = mcscf.CASCI(mSCF, ncas, nelecas)
                 mCI.fcisolver = fci.direct_spin1.FCISolver(mol)
             eci = mCI.kernel()[0]
+            dm = mCI.make_rdm1()
+            dip = mSCF.dip_moment(dm=dm)
 
         if inp.scf.roots is None:
             print_energy('FCI', eci)
@@ -277,6 +280,7 @@ def do_hf(inp, unrestricted=False):
 
     # do SCF
     ehf = mSCF.kernel()
+    mSCF.analyze()
 
     inp.timer.end(timer)
 
