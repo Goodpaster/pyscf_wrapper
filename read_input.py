@@ -37,6 +37,7 @@ def read_input(filename):
     reader.add_boolean_key('vfreq', default=False)          # vibrational frequencies
     reader.add_boolean_key('fcidump', default=False)        # create FCIDUMP file
     reader.add_boolean_key('mo2cube', default=False)        # Cube files for each MO
+    reader.add_boolean_key('molden', default=False)         # saves molden file
 
     # add scf block keys
     scf = reader.add_block_key('scf', required=True)

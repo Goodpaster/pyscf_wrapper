@@ -243,6 +243,12 @@ def do_scf(inp):
         from mo_2_cube import save_MOs
         save_MOs(inp, mSCF, mSCF.mo_coeff)
 
+    # save molden file if needed
+    if inp.molden:
+        from pyscf.tools import molden
+        molden_file = inp.filename[:-4] + '.molden'
+        molden.from_mo(inp.mol, molden_file, mSCF.mo_coeff)
+
     # save and return
     inp.mf = mSCF
     return inp
