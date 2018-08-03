@@ -12,6 +12,7 @@ def read_input(filename):
     from pyscf import gto, scf, dft, cc
     import numpy as np
     from pyscf.cc import ccsd_t
+    from pyscf.gto.basis import load
 
 
     # initialize reader for a pySCF input
@@ -24,10 +25,14 @@ def read_input(filename):
         '\s*([A-Za-z.]+)\s+(\-?\d+\.?\d*)\s+(\-?\d+.?\d*)\s+(\-?\d+.?\d*)', repeat=True)
     atoms.add_line_key('read', type=str, default=None)      # read geom from xyz file
 
+    # add basis block
+    basis = reader.add_block_key('basis')
+    basis.add_regex_line('atom', '\s*([A-Za-z]+)\s+([A-Za-z0-9]+)', repeat=True)
+
     # add simple line keys
     reader.add_line_key('memory', type=(int, float))        # max memory in MB
     reader.add_line_key('unit', default='angstrom')         # coord unit
-    reader.add_line_key('basis', default='sto-3g')          # basis
+#    reader.add_line_key('basis', default='sto-3g')          # basis
     reader.add_line_key('charge', type=int)                 # molecular charge
     reader.add_line_key('spin', type=int)                   # molecular spin
     reader.add_line_key('symmetry', type=int, default=None) # mol symmetry (False, 0, 1)
@@ -65,6 +70,12 @@ def read_input(filename):
     inp  = reader.read_input(filename)
     inp.filename = filename
 
+    # sanity checks
+    if inp.atoms.atom is None and inp.atoms.read is None:
+        sys.exit("Must specify atom coordinates or read from xyz file!")
+    if inp.atoms.atom is not None and inp.atoms.read is not None:
+        sys.exit("Must only specify either atom coordinates OR xyz file!")
+
     # print input file to screen
     pstr("Input File")
     [print (i[:-1]) for i in open(filename).readlines() if ((i[0] not in ['#', '!'])
@@ -74,42 +85,58 @@ def read_input(filename):
     # initialze pySCF molecule object
     mol = gto.Mole()
 
+    # basis block into basis dict
+    basis = {'all': 'sto3g'}
+    if inp.basis is not None:
+        for r in inp.basis.atom:
+            basis.update({r.group(1): r.group(2)})
+
     # read atoms and transform to pyscf format
     mol.atom = []
-    ghbasis = []
-    assert (inp.atoms.atom is not None or inp.atoms.read is not None)
+    mol.basis = {}
 
-    # collect from regular input
+    ghbasis = []
+
+    # collect from coordinates input
     if inp.atoms.atom is not None:
         for r in inp.atoms.atom:
+
+            coord = np.array([r.group(2), r.group(3), r.group(4)], dtype=float)
+
+            # ghost atom
             if 'ghost.' in r.group(1).lower() or 'gh.' in r.group(1).lower():
-                ghbasis.append(r.group(1).split('.')[1])
-                rgrp1 = 'ghost:{0}'.format(len(ghbasis))
-                mol.atom.append([rgrp1, (float(r.group(2)), float(r.group(3)), float(r.group(4)))])
+                basatm  = r.group(1).split('.')[1]
+                atmstr  = ['ghost:{0}'.format(len(mol.atom)+1), coord]
+                bastype = [basis[basatm] if basatm in basis.keys() else basis['all']][0]
+
+                mol.basis.update({'ghost:{0}'.format(len(mol.atom)+1):
+                    load(bastype, basatm)})
+                mol.atom.append(atmstr)
+
+            # regular atom
             else:
-                mol.atom.append([r.group(1), (float(r.group(2)), float(r.group(3)), float(r.group(4)))])
+                basatm  = r.group(1)
+                atmstr  = ['{0}:{1}'.format(basatm, len(mol.atom)+1), coord]
+                bastype = [basis[basatm] if basatm in basis.keys() else basis['all']][0]
+
+                mol.basis.update({'{0}:{1}'.format(basatm, len(mol.atom)+1):
+                    load(bastype, basatm)})
+                mol.atom.append(atmstr) 
 
     # collect from xyz file
-    if inp.atoms.read is not None:
+    elif inp.atoms.read is not None:
         xyzlines = open(inp.atoms.read, 'r').readlines()
-        for i in range(2,len(xyzlines)):
+        natm = int(xyzlines[0])
+        for i in range(2,natm+2):
             line = xyzlines[i].split()
-            if 'ghost.' in line[0].lower() or 'gh.' in line[0].lower():
-                ghbasis.append(line[0].split('.')[1])
-                rgrp1 = 'ghost:{0}'.format(len(ghbasis))
-                mol.atom.append([rgrp1, (float(line[1]), float(line[2]), float(line[3]))])
-            else:
-                mol.atom.append([line[0], (float(line[1]), float(line[2]), float(line[3]))])
 
-    # build dict of basis for each atom
-    mol.basis = {}
-    nghost = 0
-    for i in range(len(mol.atom)):
-        if 'ghost' in mol.atom[i][0]:
-            mol.basis.update({mol.atom[i][0]: gto.basis.load(inp.basis, ghbasis[nghost])})
-            nghost += 1
-        else:
-            mol.basis.update({mol.atom[i][0]: gto.basis.load(inp.basis, mol.atom[i][0])})
+            atmstr = ['{0}:{1}'.format(line[0], len(mol.atom)+1), (float(line[1]),
+                float(line[2]), float(line[3]))]
+            bastype = [basis[line[0]] if line[0] in basis.keys() else basis['all']][0]
+
+            mol.basis.update({'{0}:{1}'.format(line[0], len(mol.atom)+1):
+                 load(bastype, line[0])})
+            mol.atom.append(atmstr)
 
     # build molecule object
     if inp.memory is not None: mol.max_memory = inp.memory
