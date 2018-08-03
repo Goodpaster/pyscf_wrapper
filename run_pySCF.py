@@ -6,12 +6,12 @@ def main():
 
     from argparse import ArgumentParser, RawDescriptionHelpFormatter
     from textwrap import dedent
-    from read_input import read_input, pstr
+    from src.read_input import read_input, pstr
     import sys
-    from simple_timer import timer
-    from scf import do_scf
-    from geomopt import do_geomopt
-    from vfreq import vibrations
+    from src.simple_timer import timer
+    from src.scf import do_scf
+    from src.geomopt import do_geomopt
+    from src.vfreq import vibrations
 
     # generate a parser to read the input files
     parser = ArgumentParser(description=dedent(main.__doc__),
