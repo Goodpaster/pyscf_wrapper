@@ -95,6 +95,8 @@ def do_scf(inp):
         mSCF.max_cycle = inp.scf.maxiter
         mSCF.init_guess = inp.scf.guess
         mSCF.small_rho_cutoff = 1e-20
+        mSCF.damp = inp.scf.damp
+        mSCF.level_shift = inp.scf.shift
         eks = mSCF.kernel()
         print_energy('RKS', eks)
         inp.timer.end('ks')
@@ -278,6 +280,7 @@ def do_hf(inp, unrestricted=False):
 
     # set values from input
     mSCF.level_shift = inp.scf.shift
+    mSCF.damp = inp.scf.damp
     mSCF.conv_tol = inp.scf.conv
     mSCF.conv_tol_grad = inp.scf.grad
     mSCF.max_cycle = inp.scf.maxiter

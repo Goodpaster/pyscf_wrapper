@@ -32,7 +32,6 @@ def read_input(filename):
     # add simple line keys
     reader.add_line_key('memory', type=(int, float))        # max memory in MB
     reader.add_line_key('unit', default='angstrom')         # coord unit
-#    reader.add_line_key('basis', default='sto-3g')          # basis
     reader.add_line_key('charge', type=int)                 # molecular charge
     reader.add_line_key('spin', type=int)                   # molecular spin
     reader.add_line_key('symmetry', type=int, default=None) # mol symmetry (False, 0, 1)
@@ -51,13 +50,18 @@ def read_input(filename):
     scf.add_line_key('conv', type=float, default=1e-8)      # conv_tol
     scf.add_line_key('grad', type=float, default=1e-6)      # conv_tol_grad
     scf.add_line_key('maxiter', type=int, default=50)       # max iterations
-    scf.add_line_key('guess', type=('minao', 'atom', '1e'), default='atom') # intial density guess
+    scf.add_line_key('guess', type=('minao', 'atom', '1e'), default='minao') # intial density guess
     scf.add_line_key('grid', type=(1,2,3,4,5,6,7,8,9), default=2) # dft numint grid
+    scf.add_line_key('damp', type=float, default=0)         # SCF damping factor
     scf.add_line_key('shift', type=float, default=0)        # level shift
     scf.add_line_key('diis', type=int, default=8)           # diis space
     scf.add_line_key('freeze', type=int, default=None)      # frozen core orbitals
     scf.add_line_key('cas', type=[int, int], default=None)  # CAS space for CASCI or CASSCF
     scf.add_line_key('roots', type=int, default=None)       # number of states (FCI)
+
+    # add electric core potential (ECP) block
+    ecp = reader.add_block_key('ecp')
+    ecp.add_regex_line('atom', '\s*([A-Za-z]+)\s+([A-Za-z0-9]+)', repeat=True)
 
     # add geomopt block key
     geomopt = reader.add_block_key('geomopt', required=False)
@@ -137,6 +141,13 @@ def read_input(filename):
             mol.basis.update({'{0}:{1}'.format(line[0], len(mol.atom)+1):
                  load(bastype, line[0])})
             mol.atom.append(atmstr)
+
+    # electric core potential dict
+    mol.ecp = None
+    if inp.ecp is not None:
+        mol.ecp = {}
+        for r in inp.ecp.atom:
+            mol.ecp.update({r.group(1): r.group(2)})
 
     # build molecule object
     if inp.memory is not None: mol.max_memory = inp.memory
