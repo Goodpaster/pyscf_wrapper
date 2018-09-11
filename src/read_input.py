@@ -27,7 +27,7 @@ def read_input(filename):
 
     # add basis block
     basis = reader.add_block_key('basis')
-    basis.add_regex_line('atom', '\s*([A-Za-z]+)\s+([A-Za-z0-9]+)', repeat=True)
+    basis.add_regex_line('atom', '\s*([A-Za-z]+)\s+([A-Za-z0-9\+]+)', repeat=True)
 
     # add simple line keys
     reader.add_line_key('memory', type=(int, float))        # max memory in MB
@@ -57,7 +57,12 @@ def read_input(filename):
     scf.add_line_key('diis', type=int, default=8)           # diis space
     scf.add_line_key('freeze', type=int, default=None)      # frozen core orbitals
     scf.add_line_key('cas', type=[int, int], default=None)  # CAS space for CASCI or CASSCF
+    scf.add_line_key('casspin', type=int, default=None)
     scf.add_line_key('roots', type=int, default=None)       # number of states (FCI)
+
+    # orbitals for active space
+    aorbs = scf.add_block_key('casorb', required=False)
+    aorbs.add_regex_line('orb', '\s*([0-9]*)', repeat=True)
 
     # add electric core potential (ECP) block
     ecp = reader.add_block_key('ecp')
@@ -79,6 +84,13 @@ def read_input(filename):
         sys.exit("Must specify atom coordinates or read from xyz file!")
     if inp.atoms.atom is not None and inp.atoms.read is not None:
         sys.exit("Must only specify either atom coordinates OR xyz file!")
+
+    # set orbs
+    if inp.scf.casorb is not None:
+        temp = []
+        for i in range(len(inp.scf.casorb.orb)):
+            temp.append(int(inp.scf.casorb.orb[i].group(0))-1)
+        inp.scf.casorb = np.array(temp)
 
     # print input file to screen
     pstr("Input File")

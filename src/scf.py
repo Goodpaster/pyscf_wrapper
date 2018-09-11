@@ -150,7 +150,10 @@ def do_scf(inp):
                 mCI = mcscf.CASCI(mSCF, ncas, nelecas)
                 mCI.fcisolver = fci.solver(mol)
             else:
-                nelecas = (nel//2+mol.spin//2, nel//2-mol.spin//2)
+                if mol.spin%2 == 0:
+                    nelecas = (nel//2+mol.spin//2, nel//2-mol.spin//2)
+                else:
+                    nelecas = (nel//2+mol.spin//2+1, nel//2-mol.spin//2)
                 mCI = mcscf.CASCI(mSCF, ncas, nelecas)
                 mCI.fcisolver = fci.direct_spin1.FCISolver(mol)
             eci = mCI.kernel()[0]
@@ -166,60 +169,111 @@ def do_scf(inp):
 
     # CASCI
     elif method == 'casci':
-        if inp.scf.cas is None:
-            print ('ERROR: Must specify CAS space')
+        if inp.scf.cas is None and inp.scf.casorb is None:
+            print ('ERROR: Must specify CAS space or CASORB')
             return inp
+
         ehf, mSCF = do_hf(inp)
         print_energy('RHF', ehf)
 
+        # get cas space
+        if inp.scf.cas is not None:
+            if mol.spin == 0:
+                nelecas = inp.scf.cas[0]
+            else:
+                nelecas = (inp.scf.cas[0]//2 + mol.spin//2,
+                           inp.scf.cas[0]//2 - mol.spin//2)
+            ncasorb = inp.scf.cas[1]
+        elif inp.scf.casorb is not None:
+            ncasorb = len(inp.scf.casorb)
+            nelecas = int(np.sum(mSCF.mo_occ[inp.scf.casorb]))
+            if inp.scf.casspin is not None:
+                nelecas = (nelecas//2 + inp.scf.casspin//2,
+                           nelecas//2 - inp.scf.casspin//2)
+
         inp.timer.start('casci')
-        if mol.spin == 0:
-            nelecas = inp.scf.cas[0]
+        mCI = mcscf.CASCI(mSCF, ncasorb, nelecas)
+
+        if inp.scf.casorb is not None:
+            mo = mcscf.addons.sort_mo(mCI, np.copy(mSCF.mo_coeff), inp.scf.casorb, 0)
         else:
-            nelecas = (inp.scf.cas[0]//2 + inp.scf.cas[0]%2,
-                       inp.scf.cas[0]//2)
-        mCI = mcscf.CASCI(mSCF, inp.scf.cas[1], nelecas)
-        eci = mCI.kernel()[0]
+            mo = np.copy(mSCF.mo_coeff)
+
+        eci = mCI.kernel(mo)[0]
         print_energy('CASCI', eci)
         inp.timer.end('casci')
 
     # CASSCF
     elif method == 'casscf' or method == 'ucasscf':
-        if inp.scf.cas is None:
-            print ('ERROR: Must specify CAS space')
+        if inp.scf.cas is None and inp.scf.casorb is None:
+            print ('ERROR: Must specify CAS space or CASORB')
             return inp
 
         lunrestricted = (method == 'ucasscf')
         ehf, mSCF = do_hf(inp, unrestricted=lunrestricted)
         print_energy('HF', ehf)
 
-        inp.timer.start('casci')
-        if mol.spin == 0:
-            nelecas = inp.scf.cas[0]
+        # get cas space
+        if inp.scf.cas is not None:
+            if mol.spin == 0:
+                nelecas = inp.scf.cas[0]
+            else:
+                nelecas = (inp.scf.cas[0]//2 + mol.spin//2,
+                           inp.scf.cas[0]//2 - mol.spin//2)
+            ncasorb = inp.scf.cas[1]
+        elif inp.scf.casorb is not None:
+            ncasorb = len(inp.scf.casorb)
+            nelecas = int(np.sum(mSCF.mo_occ[inp.scf.casorb]))
+            if inp.scf.casspin is not None:
+                nelecas = (nelecas//2 + inp.scf.casspin//2,
+                           nelecas//2 - inp.scf.casspin//2)
+
+        inp.timer.start('casscf')
+        mCI = mcscf.CASSCF(mSCF, ncasorb, nelecas)
+
+        if inp.scf.casorb is not None:
+            mo = mcscf.addons.sort_mo(mCI, np.copy(mSCF.mo_coeff), inp.scf.casorb, 0)
         else:
-            nelecas = (inp.scf.cas[0]//2 + inp.scf.cas[0]%2,
-                       inp.scf.cas[0]//2)
-        mCI = mcscf.CASSCF(mSCF, inp.scf.cas[1], nelecas)
-        eci = mCI.kernel()[0]
+            mo = np.copy(mSCF.mo_coeff)
+
+        eci = mCI.kernel(mo)[0]
         print_energy('CASSCF', eci)
-        inp.timer.end('casci')
+        inp.timer.end('casscf')
+
 
     elif method == 'nevpt2' or method == 'unevpt2':
-        if inp.scf.cas is None:
-            print ('ERROR: Must specify CAS space')
+        if inp.scf.cas is None and inp.scf.casorb is None:
+            print ('ERROR: Must specify CAS space or CASORB')
             return inp
 
         ehf, mSCF = do_hf(inp)
         print_energy('RHF', ehf)
 
         inp.timer.start('casscf')
-        if mol.spin == 0:
-            nelecas = inp.scf.cas[0]
+
+        # get cas space
+        if inp.scf.cas is not None:
+            if mol.spin == 0:
+                nelecas = inp.scf.cas[0]
+            else:
+                nelecas = (inp.scf.cas[0]//2 + mol.spin//2,
+                           inp.scf.cas[0]//2 - mol.spin//2)
+            ncasorb = inp.scf.cas[1]
+        elif inp.scf.casorb is not None:
+            ncasorb = len(inp.scf.casorb)
+            nelecas = int(np.sum(mSCF.mo_occ[inp.scf.casorb]))
+            if inp.scf.casspin is not None:
+                nelecas = (nelecas//2 + inp.scf.casspin//2,
+                           nelecas//2 - inp.scf.casspin//2)
+
+        mCI = mcscf.CASSCF(mSCF, ncasorb, nelecas)
+
+        if inp.scf.casorb is not None:
+            mo = mcscf.addons.sort_mo(mCI, np.copy(mSCF.mo_coeff), inp.scf.casorb, 0)
         else:
-            nelecas = (inp.scf.cas[0]//2 + mol.spin//2,
-                       inp.scf.cas[0]//2 - mol.spin//2)
-        mCI = mcscf.CASSCF(mSCF, inp.scf.cas[1], nelecas)
-        eci = mCI.kernel()[0]
+            mo = np.copy(mSCF.mo_coeff)
+
+        eci = mCI.kernel(mo)[0]
         print_energy('CASSCF', eci)
         inp.timer.end('casscf')
 
@@ -249,7 +303,7 @@ def do_scf(inp):
     if inp.molden:
         from pyscf.tools import molden
         molden_file = inp.filename[:-4] + '.molden'
-        molden.from_mo(inp.mol, molden_file, mSCF.mo_coeff)
+        molden.from_mo(inp.mol, molden_file, mSCF.mo_coeff, ene=mSCF.mo_energy)
 
     # save and return
     inp.mf = mSCF
