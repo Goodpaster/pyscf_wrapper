@@ -4,7 +4,7 @@ from __future__ import print_function, division
 def do_scf(inp):
     '''Do the requested SCF.'''
 
-    from pyscf import gto, scf, dft, cc, fci, ci, ao2mo, mcscf, mrpt, lib
+    from pyscf import gto, scf, dft, cc, fci, ci, ao2mo, mcscf, mrpt, lib, mp
     from pyscf.cc import ccsd_t
     import numpy as np
     from fcidump import fcidump
@@ -43,6 +43,15 @@ def do_scf(inp):
             e3 = ccsd_t.kernel(mSCF, eris)
             print_energy('CCSD(T)', ehf + eccsd + e3)
             inp.timer.end('ccsd(t)')
+
+    # MP2
+    elif method == 'mp2':
+        ehf, tSCF = do_hf(inp)
+        print_energy('RHF', ehf)
+
+        mSCF = mp.MP2(tSCF)
+        emp2, t2 = mSCF.kernel()
+        print_energy('MP2', ehf+emp2)
 
     elif method in ('cisd'):
         ehf, tSCF = do_hf(inp)
@@ -240,7 +249,7 @@ def do_scf(inp):
         print_energy('CASSCF', eci)
         inp.timer.end('casscf')
 
-
+    # NEVPT2
     elif method == 'nevpt2' or method == 'unevpt2':
         if inp.scf.cas is None and inp.scf.casorb is None:
             print ('ERROR: Must specify CAS space or CASORB')
@@ -266,7 +275,7 @@ def do_scf(inp):
                 nelecas = (nelecas//2 + inp.scf.casspin//2,
                            nelecas//2 - inp.scf.casspin//2)
 
-        mCI = mcscf.CASSCF(mSCF, ncasorb, nelecas)
+        mCI = mcscf.CASSCF(mSCF, ncasorb, nelecas, frozen=inp.scf.freeze)
 
         if inp.scf.casorb is not None:
             mo = mcscf.addons.sort_mo(mCI, np.copy(mSCF.mo_coeff), inp.scf.casorb, 0)
@@ -278,7 +287,8 @@ def do_scf(inp):
         inp.timer.end('casscf')
 
         inp.timer.start('nevpt2')
-        ept2 = mrpt.NEVPT2(mCI) + eci
+        mpt2 = mrpt.NEVPT(mCI)
+        ept2 = mpt2.kernel() + eci
         print_energy('NEVPT2', ept2)
         inp.timer.end('nevpt2')
 
