@@ -24,20 +24,27 @@ def do_scf(inp):
         print_energy('RHF', ehf)
 
     # CCSD and CCSD(T)
-    elif method in ('ccsd', 'ccsd(t)'):
-        ehf, tSCF = do_hf(inp)
-        print_energy('RHF', ehf)
+    elif method in ('ccsd', 'ccsd(t)', 'uccsd', 'uccsd(t)'):
+        if 'u' in method:
+            ehf, tSCF = do_hf(inp, unrestricted=True)
+            print_energy('UHF', ehf)
+        else:
+            ehf, tSCF = do_hf(inp)
+            print_energy('RHF', ehf)
 
         inp.timer.start('ccsd')
         frozen = 0
         if inp.scf.freeze is not None: frozen = inp.scf.freeze
-        mSCF = cc.RCCSD(tSCF, frozen=frozen)
+        if 'u' in method:
+            mSCF = cc.UCCSD(tSCF, frozen=frozen)
+        else:
+            mSCF = cc.CCSD(tSCF, frozen=frozen)
         mSCF.max_cycle = inp.scf.maxiter
         eccsd, t1, t2 = mSCF.kernel()
         print_energy('CCSD', ehf + eccsd)
         inp.timer.end('ccsd')
 
-        if method in ('ccsd(t)'):
+        if method in ('ccsd(t)', 'uccsd(t)'):
             inp.timer.start('ccsd(t)')
             eris = mSCF.ao2mo()
             e3 = ccsd_t.kernel(mSCF, eris)
@@ -49,10 +56,15 @@ def do_scf(inp):
         ehf, tSCF = do_hf(inp)
         print_energy('RHF', ehf)
 
-        mSCF = mp.MP2(tSCF)
+        inp.timer.start('mp2')
+        frozen = 0 
+        if inp.scf.freeze is not None: frozen = inp.scf.freeze
+        mSCF = mp.MP2(tSCF, frozen=frozen)
         emp2, t2 = mSCF.kernel()
         print_energy('MP2', ehf+emp2)
+        inp.timer.end('mp2')
 
+    # CISD
     elif method in ('cisd'):
         ehf, tSCF = do_hf(inp)
         print_energy('RHF', ehf)
