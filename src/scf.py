@@ -5,7 +5,7 @@ def do_scf(inp):
     '''Do the requested SCF.'''
 
     from pyscf import gto, scf, dft, cc, fci, ci, ao2mo, mcscf, mrpt, lib, mp
-    from pyscf.cc import ccsd_t
+    from pyscf.cc import ccsd_t, uccsd_t
     import numpy as np
     from fcidump import fcidump
 
@@ -47,7 +47,11 @@ def do_scf(inp):
         if method in ('ccsd(t)', 'uccsd(t)'):
             inp.timer.start('ccsd(t)')
             eris = mSCF.ao2mo()
-            e3 = ccsd_t.kernel(mSCF, eris)
+
+            if method == 'ccsd(t)':
+                e3 = ccsd_t.kernel(mSCF, eris)
+            else:
+                e3 = uccsd_t.kernel(mSCF, eris)
             print_energy('CCSD(T)', ehf + eccsd + e3)
             inp.timer.end('ccsd(t)')
 
@@ -65,7 +69,7 @@ def do_scf(inp):
         inp.timer.end('mp2')
 
     # CISD
-    elif method in ('cisd'):
+    elif method == 'cisd' or method == 'cisd(q)':
         ehf, tSCF = do_hf(inp)
         print_energy('RHF', ehf)
 
@@ -76,6 +80,28 @@ def do_scf(inp):
         ecisd = mSCF.kernel()[0]
         print_energy('CISD', ehf + ecisd)
         inp.timer.end('cisd')
+
+        # perform Davison quadruples correction
+        c0 = np.max(np.abs(mSCF.ci))
+        c02 = c0**2
+        ne = mSCF.mol.nelectron
+        eq = ( 1.0 - c02 ) * ecisd
+        print_energy('CISD(Q) Davidson', ehf + ecisd + eq)
+        eq = ( 1.0 - c02 ) / c02 * ecisd
+        print_energy('CISD(Q) Renomalized-Davidson', ehf + ecisd + eq)
+        eq = ( 1.0 - c02 ) / ( 2.0 * c02 - 1.0 ) * ecisd
+        print_energy('CISD(Q) Davison-Silver', ehf + ecisd + eq)
+        eq = (( 2.0 * c02 ) / ((2.0*c02-1.0)*(1.0 + np.sqrt(1.0 + (8.0*c02*(1.0-c02))
+         / ( ne * (2.0*c02-1.0)**2 )))) - 1.0 ) * ecisd
+        print_energy('CISD(Q) PC', ehf + ecisd + eq)
+        eq = ( 1.0 - c02 ) / c02 * ((ne-2)*(ne-3.0)) / (ne*(ne-1.0)) * ecisd
+        print_energy('CISD(Q) MC', ehf + ecisd + eq)
+        if ne > 2:
+            eq = ( 2.0 - c02 ) / (2.0 * (ne-1.0)/(ne-2.0) * c02 - 1.0)
+        else:
+            eq = 0.0
+        print_energy('CISD(Q) DD', ehf + ecisd + eq)
+
 
     # UKS
     elif method in ('uks' or 'udft'):
