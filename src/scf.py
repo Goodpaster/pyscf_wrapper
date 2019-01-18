@@ -24,7 +24,7 @@ def do_scf(inp):
         print_energy('RHF', ehf)
 
     # CCSD and CCSD(T)
-    elif method in ('ccsd', 'ccsd(t)', 'uccsd', 'uccsd(t)'):
+    elif method in ('ccsd', 'ccsd(t)', 'uccsd', 'uccsd(t)', 'eomccsd'):
         if 'u' in method:
             ehf, tSCF = do_hf(inp, unrestricted=True)
             print_energy('UHF', ehf)
@@ -43,6 +43,13 @@ def do_scf(inp):
         eccsd, t1, t2 = mSCF.kernel()
         print_energy('CCSD', ehf + eccsd)
         inp.timer.end('ccsd')
+
+        if method == 'eomccsd':
+            inp.timer.start('eomccsd')
+            ee = mSCF.eomee_ccsd_singlet(nroots=4)[0]
+            inp.timer.end('eomccsd')
+            for i in range(len(ee)):
+                print_energy('EOM-CCSD {0} (eV)'.format(i+1), ee[i] * 27.2114)
 
         if method in ('ccsd(t)', 'uccsd(t)'):
             inp.timer.start('ccsd(t)')
