@@ -5,8 +5,8 @@ def vibrations(inp):
     import numpy as np
     import scipy as sp
     from pyscf.future import hessian
-    from scf import do_scf
-    from read_input import pstr
+    from .scf import do_scf
+    from .read_input import pstr
 
     na = inp.mol.natm
     n3 = na * 3

@@ -7,7 +7,7 @@ def do_scf(inp):
     from pyscf import gto, scf, dft, cc, fci, ci, ao2mo, mcscf, mrpt, lib, mp
     from pyscf.cc import ccsd_t, uccsd_t
     import numpy as np
-    from fcidump import fcidump
+    from .fcidump import fcidump
 
     # sort out the method
     mol = inp.mol
@@ -351,7 +351,7 @@ def do_scf(inp):
 
     # plot MOs if needed
     if inp.mo2cube:
-        from mo_2_cube import save_MOs
+        from .mo_2_cube import save_MOs
         save_MOs(inp, mSCF, mSCF.mo_coeff)
 
     # save molden file if needed

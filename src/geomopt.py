@@ -5,7 +5,7 @@ def update_mole(mol, dx=None):
 
     import numpy as np
     import pyscf
-    from read_input import pstr
+    from .read_input import pstr
 
     # update the mole geometry
     q = mol.atom_charges()
@@ -64,8 +64,8 @@ def do_geomopt(inp):
     from pyscf.future import hessian
     import numpy as np
     import scipy as sp
-    from read_input import pstr
-    from scf import do_scf
+    from .read_input import pstr
+    from .scf import do_scf
 
     # get convergence criteria
     errconv = inp.geomopt.conv

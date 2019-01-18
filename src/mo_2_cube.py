@@ -15,7 +15,7 @@ def plot_MO(molid, mol, C, coords):
 def save_MOs(inp, mf, Cmat, spacing=0.1, x=None, y=None, z=None):
 
     import numpy as np
-    import gaussian_cube
+    import .gaussian_cube import gaussian_cube
 
     # filename
     filename = inp.filename[:-4] + '_orbitals'
@@ -54,7 +54,7 @@ def save_MOs(inp, mf, Cmat, spacing=0.1, x=None, y=None, z=None):
     spaceb = spacing * ang2bohr
     origin = np.array([x[0], y[0], z[0]]) * ang2bohr
 
-    cub = gaussian_cube.gaussian_cube()
+    cub = gaussian_cube()
 
     cub.title = 'ORBITALS'
     cub.nx = nx
