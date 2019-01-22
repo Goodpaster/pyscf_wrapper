@@ -4,7 +4,7 @@ from __future__ import print_function, division
 def do_scf(inp):
     '''Do the requested SCF.'''
 
-    from pyscf import gto, scf, dft, cc, fci, ci, ao2mo, mcscf, mrpt, lib, mp
+    from pyscf import gto, scf, dft, cc, fci, ci, ao2mo, mcscf, mrpt, lib, mp, tdscf
     from pyscf.cc import ccsd_t, uccsd_t
     import numpy as np
     from .fcidump import fcidump
@@ -18,10 +18,28 @@ def do_scf(inp):
         ehf, mSCF = do_hf(inp, unrestricted=True)
         print_energy('UHF', ehf)
 
+        if inp.scf.exci is not None:
+            inp.timer.start('TDHF')
+            mtd = tdscf.TDDFT(mSCF)
+            mtd.nstates = inp.scf.exci
+            exci, temp = mtd.kernel()
+            inp.timer.end('TDHF')
+            for i in range(len(exci)):
+                print_energy('TDHF Exci {0} (eV)'.format(i+1), exci[i]*27.2113961)
+
     # RHF
     elif method in ('rhf', 'hf'):
         ehf, mSCF = do_hf(inp)
         print_energy('RHF', ehf)
+
+        if inp.scf.exci is not None:
+            inp.timer.start('TDHF')
+            mtd = tdscf.TDDFT(mSCF)
+            mtd.nstates = inp.scf.exci
+            exci, temp = mtd.kernel()
+            inp.timer.end('TDHF')
+            for i in range(len(exci)):
+                print_energy('TDHF Exci {0} (eV)'.format(i+1), exci[i]*27.2113961)
 
     # CCSD and CCSD(T)
     elif method in ('ccsd', 'ccsd(t)', 'uccsd', 'uccsd(t)', 'eomccsd'):
@@ -130,6 +148,15 @@ def do_scf(inp):
         print_energy('UKS', eks)
         inp.timer.end('uks')
 
+        if inp.scf.exci is not None:
+            inp.timer.start('TDDFT')
+            mtd = tdscf.TDDFT(mSCF)
+            mtd.nstates = inp.scf.exci
+            exci, temp = mtd.kernel()
+            inp.timer.end('TDDFT')
+            for i in range(len(exci)):
+                print_energy('TDDFT Exci {0} (eV)'.format(i+1), exci[i]*27.2113961)
+
     # RKS
     elif method in ('rks', 'ks', 'rdft', 'dft'):
         inp.timer.start('ks')
@@ -154,6 +181,15 @@ def do_scf(inp):
         eks = mSCF.kernel()
         print_energy('RKS', eks)
         inp.timer.end('ks')
+
+        if inp.scf.exci is not None:
+            inp.timer.start('TDDFT')
+            mtd = tdscf.TDDFT(mSCF)
+            mtd.nstates = inp.scf.exci
+            exci, temp = mtd.kernel()
+            inp.timer.end('TDDFT')
+            for i in range(len(exci)):
+                print_energy('TDDFT Exci {0} (eV)'.format(i+1), exci[i]*27.2113961)
 
     # Unrestricted FCI
     elif method == 'ufci':

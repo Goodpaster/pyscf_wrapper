@@ -59,6 +59,7 @@ def read_input(filename):
     scf.add_line_key('cas', type=[int, int], default=None)  # CAS space for CASCI or CASSCF
     scf.add_line_key('casspin', type=int, default=None)
     scf.add_line_key('roots', type=int, default=None)       # number of states (FCI)
+    scf.add_line_key('exci', type=int, default=None)        # TDDFT/TDHF excitations
 
     # orbitals for active space
     aorbs = scf.add_block_key('casorb', required=False)
