@@ -20,12 +20,8 @@ def do_scf(inp):
 
         if inp.scf.exci is not None:
             inp.timer.start('TDHF')
-            mtd = tdscf.TDDFT(mSCF)
-            mtd.nstates = inp.scf.exci
-            exci, temp = mtd.kernel()
+            mtd = do_TDDFT(inp, mSCF)
             inp.timer.end('TDHF')
-            for i in range(len(exci)):
-                print_energy('TDHF Exci {0} (eV)'.format(i+1), exci[i]*27.2113961)
 
     # RHF
     elif method in ('rhf', 'hf'):
@@ -34,12 +30,8 @@ def do_scf(inp):
 
         if inp.scf.exci is not None:
             inp.timer.start('TDHF')
-            mtd = tdscf.TDDFT(mSCF)
-            mtd.nstates = inp.scf.exci
-            exci, temp = mtd.kernel()
+            mtd = do_TDDFT(inp, mSCF)
             inp.timer.end('TDHF')
-            for i in range(len(exci)):
-                print_energy('TDHF Exci {0} (eV)'.format(i+1), exci[i]*27.2113961)
 
     # CCSD and CCSD(T)
     elif method in ('ccsd', 'ccsd(t)', 'uccsd', 'uccsd(t)', 'eomccsd'):
@@ -150,12 +142,8 @@ def do_scf(inp):
 
         if inp.scf.exci is not None:
             inp.timer.start('TDDFT')
-            mtd = tdscf.TDDFT(mSCF)
-            mtd.nstates = inp.scf.exci
-            exci, temp = mtd.kernel()
+            mtd = do_TDDFT(inp, mSCF)
             inp.timer.end('TDDFT')
-            for i in range(len(exci)):
-                print_energy('TDDFT Exci {0} (eV)'.format(i+1), exci[i]*27.2113961)
 
     # RKS
     elif method in ('rks', 'ks', 'rdft', 'dft'):
@@ -184,12 +172,8 @@ def do_scf(inp):
 
         if inp.scf.exci is not None:
             inp.timer.start('TDDFT')
-            mtd = tdscf.TDDFT(mSCF)
-            mtd.nstates = inp.scf.exci
-            exci, temp = mtd.kernel()
+            mtd = do_TDDFT(inp, mSCF)
             inp.timer.end('TDDFT')
-            for i in range(len(exci)):
-                print_energy('TDDFT Exci {0} (eV)'.format(i+1), exci[i]*27.2113961)
 
     # Unrestricted FCI
     elif method == 'ufci':
@@ -440,6 +424,19 @@ def do_hf(inp, unrestricted=False):
 
     # return energy and SCF object
     return ehf, mSCF
+
+def do_TDDFT(inp, mSCF):
+    '''Do TDHF/TDDFT calculation.'''
+
+    from pyscf import tdscf
+
+    mtd = tdscf.TDDFT(mSCF)
+    mtd.nstates = inp.scf.exci
+    mtd.verbose = max(mtd.verbose, 9)
+    exci, temp = mtd.kernel()
+    mtd.analyze()
+
+    return mtd
 
 
 def print_energy(string, e):
