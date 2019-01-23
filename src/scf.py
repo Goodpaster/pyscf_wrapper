@@ -433,6 +433,7 @@ def do_TDDFT(inp, mSCF):
     mtd = tdscf.TDDFT(mSCF)
     mtd.nstates = inp.scf.exci
     mtd.verbose = max(mtd.verbose, 9)
+    mtd.conv_tol = 1e-6
     exci, temp = mtd.kernel()
     mtd.analyze()
 
